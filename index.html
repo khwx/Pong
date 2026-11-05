@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10130d">
+  <title>PONG — Arcade 1972</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #10130d;
+      --green: #c9ef77;
+      --dim: #82945d;
+      --amber: #f0ad57;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 28px 16px;
+      background:
+        radial-gradient(ellipse at 50% 45%, #26301b 0, #171d13 48%, #0c0f0b 100%);
+      color: var(--green);
+      font-family: "Courier New", monospace;
+    }
+
+    .cabinet {
+      width: min(100%, 900px);
+      padding: clamp(18px, 4vw, 38px);
+      border: 2px solid #59683d;
+      border-radius: 12px;
+      background: #171b13;
+      box-shadow: 0 0 0 7px #0b0d09, 0 18px 70px #000b, inset 0 0 32px #0008;
+    }
+
+    header { text-align: center; }
+
+    .eyebrow {
+      margin: 0 0 6px;
+      color: var(--amber);
+      font-size: 0.75rem;
+      letter-spacing: 0.32em;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--green);
+      font-size: clamp(2.6rem, 9vw, 5rem);
+      line-height: 1;
+      letter-spacing: 0.16em;
+      text-shadow: 0 0 18px #b5e85b66;
+    }
+
+    .subtitle {
+      margin: 12px 0 24px;
+      color: var(--dim);
+      font-size: 0.78rem;
+      letter-spacing: 0.22em;
+    }
+
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      max-width: 430px;
+      margin: 0 auto 14px;
+      text-align: center;
+    }
+
+    .player-name {
+      display: block;
+      color: var(--dim);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+    }
+
+    .score {
+      display: block;
+      margin-top: 2px;
+      font-size: clamp(2.4rem, 8vw, 3.6rem);
+      line-height: 1;
+      font-weight: bold;
+    }
+
+    .separator { color: #53613d; font-size: 2rem; }
+
+    .screen {
+      position: relative;
+      overflow: hidden;
+      border: 2px solid #647745;
+      border-radius: 8px;
+      background: #080b07;
+      box-shadow: inset 0 0 36px #a4d54d0c, 0 0 18px #a4d54d12;
+    }
+
+    .screen::after {
+      position: absolute;
+      z-index: 1;
+      inset: 0;
+      pointer-events: none;
+      content: "";
+      background: repeating-linear-gradient(
+        to bottom, transparent 0, #d9ffad08 1px, transparent 3px, transparent 5px
+      );
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      aspect-ratio: 800 / 450;
+      image-rendering: pixelated;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 20px 0 0;
+      color: var(--dim);
+      font-size: 0.72rem;
+      line-height: 1.8;
+    }
+
+    .controls strong { color: var(--green); font-weight: normal; }
+    .controls p { margin: 0; }
+    .controls p:last-child { text-align: right; }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    button {
+      min-width: 118px;
+      padding: 10px 14px;
+      border: 1px solid #647745;
+      border-radius: 4px;
+      background: #202719;
+      color: var(--green);
+      font: inherit;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+    }
+
+    button:hover, button:focus-visible {
+      outline: none;
+      background: #303c20;
+      border-color: var(--green);
+    }
+
+    footer {
+      margin-top: 20px;
+      color: #64734b;
+      text-align: center;
+      font-size: 0.64rem;
+      letter-spacing: 0.12em;
+    }
+
+    @media (max-width: 520px) {
+      .controls { font-size: 0.63rem; }
+      .cabinet { padding: 20px 14px; }
+      .subtitle { font-size: 0.65rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="cabinet">
+    <header>
+      <p class="eyebrow">◆ ARCADE ORIGINAL · 1972 ◆</p>
+      <h1>PONG</h1>
+      <p class="subtitle">DOIS JOGADORES · PRIMEIRO A 11 PONTOS VENCE</p>
+    </header>
+
+    <section class="scoreboard" aria-label="Placar">
+      <div>
+        <span class="player-name">JOGADOR 1</span>
+        <output class="score" id="score-left" aria-label="Pontos do jogador 1">0</output>
+      </div>
+      <span class="separator" aria-hidden="true">:</span>
+      <div>
+        <span class="player-name">JOGADOR 2</span>
+        <output class="score" id="score-right" aria-label="Pontos do jogador 2">0</output>
+      </div>
+    </section>
+
+    <div class="screen">
+      <canvas id="game" width="800" height="450" aria-label="Campo de Pong para dois jogadores"></canvas>
+    </div>
+
+    <section class="controls" aria-label="Controles">
+      <p><strong>JOGADOR 1</strong><br>W sobe &nbsp;·&nbsp; S desce</p>
+      <p><strong>JOGADOR 2</strong><br>↑ sobe &nbsp;·&nbsp; ↓ desce</p>
+    </section>
+
+    <div class="actions">
+      <button id="start" type="button">INICIAR · ESPAÇO</button>
+      <button id="restart" type="button">NOVO JOGO · R</button>
+    </div>
+
+    <footer>INSIRA A FICHA · RETA FINAL EM 11 PONTOS</footer>
+  </main>
+
+  <script>
+    (() => {
+      const canvas = document.querySelector("#game");
+      const ctx = canvas.getContext("2d");
+      const leftScore = document.querySelector("#score-left");
+      const rightScore = document.querySelector("#score-right");
+      const startButton = document.querySelector("#start");
+      const keys = new Set();
+      const width = canvas.width;
+      const height = canvas.height;
+      const paddleWidth = 12;
+      const paddleHeight = 82;
+      const winningScore = 11;
+
+      let leftY;
+      let rightY;
+      let ball;
+      let scores;
+      let running;
+      let gameOver;
+      let lastTime = 0;
+
+      function resetBall(direction = Math.random() < 0.5 ? -1 : 1) {
+        ball = {
+          x: width / 2,
+          y: height / 2,
+          vx: direction * 310,
+          vy: (Math.random() * 2 - 1) * 145,
+          radius: 8
+        };
+      }
+
+      function resetGame() {
+        leftY = (height - paddleHeight) / 2;
+        rightY = leftY;
+        scores = [0, 0];
+        running = false;
+        gameOver = false;
+        leftScore.value = "0";
+        rightScore.value = "0";
+        resetBall();
+        startButton.textContent = "INICIAR · ESPAÇO";
+      }
+
+      function draw() {
+        ctx.fillStyle = "#080b07";
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.setLineDash([12, 14]);
+        ctx.strokeStyle = "#425232";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(width / 2, 0);
+        ctx.lineTo(width / 2, height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = "#c9ef77";
+        ctx.shadowColor = "#c9ef77";
+        ctx.shadowBlur = 12;
+        ctx.fillRect(30, leftY, paddleWidth, paddleHeight);
+        ctx.fillRect(width - 30 - paddleWidth, rightY, paddleWidth, paddleHeight);
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = "#82945d";
+        ctx.font = "16px Courier New";
+        ctx.textAlign = "center";
+        if (gameOver) {
+          ctx.fillStyle = "#c9ef77";
+          ctx.font = "bold 26px Courier New";
+          ctx.fillText(scores[0] > scores[1] ? "JOGADOR 1 VENCEU!" : "JOGADOR 2 VENCEU!", width / 2, height / 2 - 10);
+          ctx.font = "14px Courier New";
+          ctx.fillText("APERTE R PARA JOGAR DE NOVO", width / 2, height / 2 + 22);
+        } else if (!running) {
+          ctx.fillText(scores[0] + scores[1] === 0 ? "APERTE ESPAÇO PARA JOGAR" : "APERTE ESPAÇO PARA CONTINUAR", width / 2, height / 2 + 100);
+        }
+      }
+
+      function update(delta) {
+        const paddleSpeed = 390 * delta;
+        if (keys.has("w")) leftY -= paddleSpeed;
+        if (keys.has("s")) leftY += paddleSpeed;
+        if (keys.has("arrowup")) rightY -= paddleSpeed;
+        if (keys.has("arrowdown")) rightY += paddleSpeed;
+
+        leftY = Math.max(0, Math.min(height - paddleHeight, leftY));
+        rightY = Math.max(0, Math.min(height - paddleHeight, rightY));
+        if (!running) return;
+
+        ball.x += ball.vx * delta;
+        ball.y += ball.vy * delta;
+
+        if (ball.y - ball.radius <= 0 || ball.y + ball.radius >= height) {
+          ball.vy *= -1;
+          ball.y = Math.max(ball.radius, Math.min(height - ball.radius, ball.y));
+        }
+
+        const leftX = 30 + paddleWidth;
+        const rightX = width - 30 - paddleWidth;
+        if (ball.vx < 0 && ball.x - ball.radius <= leftX &&
+            ball.x + ball.radius >= leftX && ball.y >= leftY && ball.y <= leftY + paddleHeight) {
+          bounceFromPaddle(leftX, leftY);
+        } else if (ball.vx > 0 && ball.x + ball.radius >= rightX &&
+                   ball.x - ball.radius <= rightX && ball.y >= rightY && ball.y <= rightY + paddleHeight) {
+          bounceFromPaddle(rightX, rightY);
+        }
+
+        if (ball.x + ball.radius < 0) scorePoint(1);
+        if (ball.x - ball.radius > width) scorePoint(0);
+      }
+
+      function bounceFromPaddle(paddleX, paddleY) {
+        const impact = (ball.y - (paddleY + paddleHeight / 2)) / (paddleHeight / 2);
+        ball.vx = Math.sign(ball.vx) * Math.min(Math.abs(ball.vx) * 1.06, 650) * -1;
+        ball.vy = impact * 330;
+        ball.x = paddleX + (ball.vx < 0 ? -ball.radius : ball.radius);
+      }
+
+      function scorePoint(player) {
+        scores[player] += 1;
+        leftScore.value = String(scores[0]);
+        rightScore.value = String(scores[1]);
+        if (scores[player] >= winningScore) {
+          running = false;
+          gameOver = true;
+          resetBall();
+          startButton.textContent = "FIM DE JOGO";
+        } else {
+          running = false;
+          resetBall(player === 0 ? 1 : -1);
+          startButton.textContent = "ESPAÇO · PRÓXIMO PONTO";
+        }
+      }
+
+      function frame(time) {
+        const delta = Math.min((time - lastTime) / 1000 || 0, 0.03);
+        lastTime = time;
+        update(delta);
+        draw();
+        requestAnimationFrame(frame);
+      }
+
+      function toggleGame() {
+        if (gameOver) return;
+        running = !running;
+        startButton.textContent = running ? "PAUSAR · ESPAÇO" : "CONTINUAR · ESPAÇO";
+      }
+
+      document.addEventListener("keydown", (event) => {
+        const key = event.key.toLowerCase();
+        if (["arrowup", "arrowdown", " "].includes(key)) event.preventDefault();
+        keys.add(key);
+        if (key === " " && !event.repeat) toggleGame();
+        if (key === "r" && !event.repeat) resetGame();
+      });
+
+      document.addEventListener("keyup", (event) => keys.delete(event.key.toLowerCase()));
+      window.addEventListener("blur", () => keys.clear());
+      startButton.addEventListener("click", toggleGame);
+      document.querySelector("#restart").addEventListener("click", resetGame);
+
+      resetGame();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
